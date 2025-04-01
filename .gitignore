@@ -58,6 +58,7 @@ logs/
 *.save
 *.bak
 fishing-game-save.json
+fishing-game
 
 # OS specific files
 .DS_Store

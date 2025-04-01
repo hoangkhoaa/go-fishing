@@ -43,6 +43,7 @@ make run
 
 - **Go Fishing**: Cast your line and try to catch fish
 - **View Inventory**: See what fish you've caught so far
+- **View History**: Browse your fishing records by date
 - **Quit Game**: Exit the game
 
 ### Command-Line Options
@@ -112,7 +113,21 @@ The inventory screen provides a complete overview of your catches:
   - Press `1` to sort by rarity (rarest fish first)
   - Press `2` to sort by weight (heaviest fish first)
   - Press `3` to sort by value (most valuable fish first)
+  - Press `4` to sort by quantity (most caught first)
+- Press `h` to view your fishing history by date
 - The currently sorted column is highlighted for easy reference
+
+### Fishing History
+
+The game keeps track of your catches by day, allowing you to review your fishing history:
+- **Daily Records**: Fish catches are saved by date in the `saves` directory
+- **History Browser**: Navigate through dates with fishing activity
+- **Catch Statistics**: View fish count, total weight, and value for each day
+- **Detailed View**: For each date, see exactly what you caught with the same sorting options as the inventory
+- **Today vs. Past**: Special views distinguish between today's catches and historical records
+- **Auto-saving**: Game progress is saved automatically when fish are caught or every 5 minutes
+
+Each day's catches are stored in a separate save file, making it easy to track your fishing progress over time. All save files are located in the local `saves` directory within the game folder.
 
 ## Development
 
