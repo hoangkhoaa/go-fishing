@@ -22,7 +22,7 @@ A relaxing terminal-based fishing game written in Go using the Bubble Tea TUI fr
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/fishing-game.git
+git clone https://github.com/hoangkhoaa/go-fishing.git
 cd fishing-game
 
 # Build the game
