@@ -1,0 +1,69 @@
+# Binaries and executables
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/fishing-game
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+*.prof
+*.cov
+
+# Go specific
+go.work
+vendor/
+
+# Dependency directories
+/node_modules/
+/jspm_packages/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.atom/
+.eclipse/
+*.swp
+*.swo
+*~
+
+# Debug files
+debug
+debug.test
+__debug_bin
+*.log
+*.log.*
+logs/
+
+# Build output
+/build/
+/dist/
+
+# Save files and user data
+/tmp/
+*.save
+*.bak
+fishing-game-save.json
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db 
