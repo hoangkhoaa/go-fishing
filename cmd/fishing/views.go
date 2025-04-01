@@ -38,6 +38,10 @@ func (m model) View() string {
 		s += m.renderFishResult()
 	case "inventory":
 		s += m.renderInventory()
+	case "history":
+		s += m.renderHistory()
+	case "viewHistoryCatches":
+		s += m.renderHistoryCatches()
 	}
 
 	// Show message if present
@@ -52,7 +56,11 @@ func (m model) View() string {
 	} else if m.state == "fishResult" && !autoFishing {
 		helpText = infoStyle.Render("Any key: Continue")
 	} else if m.state == "inventory" {
-		helpText = infoStyle.Render("↑↓:Navigate | a:Auto | s:Save | q:Back")
+		helpText = infoStyle.Render("↑↓:Navigate | h:History | a:Auto | s:Save | q:Back")
+	} else if m.state == "history" {
+		helpText = infoStyle.Render("↑↓:Navigate | Enter:View | q:Back")
+	} else if m.state == "viewHistoryCatches" {
+		helpText = infoStyle.Render("↑↓:Navigate | 1-4:Sort | q:Back")
 	} else if m.state != "fishResult" {
 		helpText = infoStyle.Render("a:Auto | s:Save | q:Back")
 	}
@@ -760,4 +768,421 @@ func renderStats(width int) string {
 	}
 
 	return boxStyle.Render(statsBuilder.String())
+}
+
+// renderHistory displays a list of available dates with fishing records
+func (m model) renderHistory() string {
+	content := strings.Builder{}
+
+	// Header
+	content.WriteString(historyHeaderStyle.Render("FISHING HISTORY") + "\n\n")
+
+	if len(m.historyDates) == 0 {
+		content.WriteString("No fishing records found yet.")
+		return boxStyle.Render(content.String())
+	}
+
+	// Display available dates in a calendar-like format
+	for i, date := range m.historyDates {
+		// Parse date for formatting
+		dateObj, err := time.Parse("2006-01-02", date)
+		if err != nil {
+			// If we can't parse it, just show the raw date
+			dateStr := date
+			if i == m.historyDateIndex {
+				content.WriteString(highlightedDateStyle.Render(dateStr))
+			} else {
+				content.WriteString(dateStyle.Render(dateStr))
+			}
+		} else {
+			// Format date in a more readable format
+			dateStr := dateObj.Format("Mon, Jan 2 2006")
+
+			// Get fish count for this date
+			count, weight, value := getFishCaughtDetails(date)
+			dateInfo := fmt.Sprintf("%s (%d fish, %dlbs, $%d)", dateStr, count, weight, value)
+
+			// Highlight selected date
+			if i == m.historyDateIndex {
+				content.WriteString(highlightedDateStyle.Render(dateInfo))
+			} else {
+				content.WriteString(dateStyle.Render(dateStr) + fmt.Sprintf(" - %d fish, %dlbs, $%d", count, weight, value))
+			}
+		}
+		content.WriteString("\n")
+	}
+
+	// Add pagination info if needed
+	if len(m.historyDates) > 10 {
+		content.WriteString("\n")
+		pageInfo := fmt.Sprintf("Page %d/%d", (m.historyDateIndex/10)+1, (len(m.historyDates)+9)/10)
+		content.WriteString(infoStyle.Render(pageInfo))
+	}
+
+	return boxStyle.Render(content.String())
+}
+
+// renderHistoryCatches displays fish caught on a specific date
+func (m model) renderHistoryCatches() string {
+	content := strings.Builder{}
+
+	// Parse date for pretty formatting
+	dateObj, err := time.Parse("2006-01-02", viewingDate)
+	var dateHeader string
+	if err != nil {
+		dateHeader = viewingDate
+	} else {
+		dateHeader = dateObj.Format("Monday, January 2, 2006")
+	}
+
+	// Determine if this is today or a past date
+	isToday := viewingDate == time.Now().Format("2006-01-02")
+
+	// Header shows the date
+	if isToday {
+		content.WriteString(historyHeaderStyle.Render("TODAY'S CATCHES - "+dateHeader) + "\n\n")
+	} else {
+		content.WriteString(historyHeaderStyle.Render("PAST CATCHES - "+dateHeader) + "\n\n")
+	}
+
+	// Get fish caught on this date
+	fishCaught := getFishCaughtOnDate(viewingDate)
+
+	if len(fishCaught) == 0 {
+		content.WriteString("No fish caught on this date.")
+		return boxStyle.Render(content.String())
+	}
+
+	// Count fish by type and track totals
+	fishCount := make(map[string]int)
+	fishTotalWeight := make(map[string]int)
+	fishTotalValue := make(map[string]int)
+
+	// Create a slice of unique fish
+	type FishSummary struct {
+		Name   string
+		Count  int
+		Weight int
+		Value  int
+	}
+
+	var fishList []FishSummary
+
+	for _, fish := range fishCaught {
+		fishCount[fish.Name]++
+		fishTotalWeight[fish.Name] += fish.Weight
+		fishTotalValue[fish.Name] += fish.Value
+	}
+
+	// Convert map to slice for sorting
+	for name, count := range fishCount {
+		fishList = append(fishList, FishSummary{
+			Name:   name,
+			Count:  count,
+			Weight: fishTotalWeight[name],
+			Value:  fishTotalValue[name],
+		})
+	}
+
+	// Sort the fish list based on the current sort mode
+	switch m.inventorySort {
+	case "weight":
+		// Sort by weight (descending)
+		sort.Slice(fishList, func(i, j int) bool {
+			return fishList[i].Weight > fishList[j].Weight
+		})
+	case "value":
+		// Sort by value (descending)
+		sort.Slice(fishList, func(i, j int) bool {
+			return fishList[i].Value > fishList[j].Value
+		})
+	case "quantity":
+		// Sort by quantity (descending)
+		sort.Slice(fishList, func(i, j int) bool {
+			return fishList[i].Count > fishList[j].Count
+		})
+	default:
+		// Create a map to efficiently look up fish rarity by name
+		rarityMap := make(map[string]int)
+		for _, f := range availableFish {
+			rarityMap[f.Name] = f.Rarity
+		}
+
+		// Sort by rarity (most rare first, then alphabetically for same rarity)
+		sort.Slice(fishList, func(i, j int) bool {
+			// Get rarities from the map
+			rarityI := rarityMap[fishList[i].Name]
+			rarityJ := rarityMap[fishList[j].Name]
+
+			// Sort by rarity (lower rarity number = more rare)
+			if rarityI != rarityJ {
+				return rarityI < rarityJ
+			}
+
+			// If same rarity, fall back to alphabetical
+			return fishList[i].Name < fishList[j].Name
+		})
+	}
+
+	// Format header based on terminal width
+	if m.width >= 70 {
+		content.WriteString(fmt.Sprintf("%-20s %-6s %-8s %-8s\n",
+			accentStyle.Render("FISH"),
+			accentStyle.Render("QTY"),
+			accentStyle.Render("WEIGHT"),
+			accentStyle.Render("VALUE")))
+		content.WriteString(strings.Repeat("─", 46) + "\n")
+	} else if m.width >= 40 {
+		content.WriteString(fmt.Sprintf("%-12s %-3s %-5s %-5s\n",
+			accentStyle.Render("FISH"),
+			accentStyle.Render("#"),
+			accentStyle.Render("WT"),
+			accentStyle.Render("VAL")))
+		content.WriteString(strings.Repeat("─", 32) + "\n")
+	} else {
+		// Super compact for very small terminals
+		content.WriteString(fmt.Sprintf("%-5s #  WT  $\n",
+			accentStyle.Render("FISH")))
+		content.WriteString(strings.Repeat("─", 18) + "\n")
+	}
+
+	// Calculate pagination
+	totalItems := len(fishList)
+	totalPages := (totalItems + m.itemsPerPage - 1) / m.itemsPerPage // Ceiling division
+
+	// Ensure page is in valid range
+	if totalItems > 0 && m.inventoryPage >= totalPages {
+		m.inventoryPage = totalPages - 1
+	}
+	if m.inventoryPage < 0 {
+		m.inventoryPage = 0
+	}
+
+	// Calculate start and end indices for current page
+	startIndex := m.inventoryPage * m.itemsPerPage
+	endIndex := startIndex + m.itemsPerPage
+	if endIndex > totalItems {
+		endIndex = totalItems
+	}
+
+	// Get the slice of fish for the current page
+	currentPageFish := fishList
+	if totalItems > 0 {
+		currentPageFish = fishList[startIndex:endIndex]
+	}
+
+	// Display fish inventory for current page
+	for _, fish := range currentPageFish {
+		// Find fish details to determine if it's legendary or trash
+		var fishDetails game.Fish
+		var fishIndicator string
+
+		for _, f := range availableFish {
+			if f.Name == fish.Name {
+				fishDetails = f
+				break
+			}
+		}
+
+		// Add indicators for special fish types
+		if fishDetails.IsLegendary {
+			fishIndicator = "🏆 "
+		} else if fishDetails.IsTrash {
+			fishIndicator = "📦 "
+		} else {
+			fishIndicator = ""
+		}
+
+		if m.width >= 70 {
+			// Highlight row based on sort
+			fishNameStyle := lipgloss.NewStyle()
+			if m.inventorySort == "name" {
+				// Use a color based on rarity
+				rarityColor := "#FFFFFF" // Default white
+
+				// Special colors for legendary and trash
+				if fishDetails.IsLegendary {
+					rarityColor = "#FF00FF" // Magenta for legendary
+				} else if fishDetails.IsTrash {
+					rarityColor = "#777777" // Gray for trash
+				} else {
+					// Regular color gradient from yellow (rare) to olive (common)
+					switch fishDetails.Rarity {
+					case 1: // Very rare
+						rarityColor = "#FFFF00" // Bright yellow
+					case 2:
+						rarityColor = "#E6E600"
+					case 3, 4:
+						rarityColor = "#CCCC00"
+					case 5, 6:
+						rarityColor = "#B3B300"
+					case 7, 8:
+						rarityColor = "#999900"
+					case 9, 10: // Very common
+						rarityColor = "#808000" // Olive
+					}
+				}
+				fishNameStyle = fishNameStyle.Foreground(lipgloss.Color(rarityColor))
+			}
+
+			weightStyle := lipgloss.NewStyle()
+			if m.inventorySort == "weight" {
+				weightStyle = weightStyle.Foreground(lipgloss.Color("#FFFF00"))
+			}
+
+			valueStyle := lipgloss.NewStyle()
+			if m.inventorySort == "value" {
+				valueStyle = valueStyle.Foreground(lipgloss.Color("#FFFF00"))
+			}
+
+			quantityStyle := lipgloss.NewStyle()
+			if m.inventorySort == "quantity" {
+				quantityStyle = quantityStyle.Foreground(lipgloss.Color("#FFFF00"))
+			}
+
+			// Fixed-width formatted fish name to ensure alignment (include indicator)
+			fishNameFormatted := fmt.Sprintf("%-20.20s", fishIndicator+fish.Name)
+
+			content.WriteString(fmt.Sprintf("%s %s %s %s\n",
+				fishNameStyle.Render(fishNameFormatted),
+				quantityStyle.Render(fmt.Sprintf("%-6d", fish.Count)),
+				weightStyle.Render(fmt.Sprintf("%-8d", fish.Weight)),
+				valueStyle.Render(fmt.Sprintf("$%-7d", fish.Value))))
+		} else if m.width >= 40 {
+			// For medium screens, abbreviate fish names longer than 12 chars
+			displayName := fish.Name
+			if len(displayName) > 10 { // Account for indicator space
+				displayName = displayName[:8] + ".."
+			}
+
+			// Add indicator before the name
+			displayName = fishIndicator + displayName
+
+			// Fixed-width formatted display name to ensure alignment
+			displayNameFormatted := fmt.Sprintf("%-12.12s", displayName)
+
+			// Highlight sorted column
+			nameStyle := lipgloss.NewStyle()
+			if m.inventorySort == "name" {
+				// Use a color based on rarity or special type
+				rarityColor := "#FFFFFF" // Default white
+
+				// Special colors for legendary and trash
+				if fishDetails.IsLegendary {
+					rarityColor = "#FF00FF" // Magenta for legendary
+				} else if fishDetails.IsTrash {
+					rarityColor = "#777777" // Gray for trash
+				} else {
+					// Regular color gradient
+					switch fishDetails.Rarity {
+					case 1: // Very rare
+						rarityColor = "#FFFF00" // Bright yellow
+					case 2:
+						rarityColor = "#E6E600"
+					case 3, 4:
+						rarityColor = "#CCCC00"
+					case 5, 6:
+						rarityColor = "#B3B300"
+					case 7, 8:
+						rarityColor = "#999900"
+					case 9, 10: // Very common
+						rarityColor = "#808000" // Olive
+					}
+				}
+				nameStyle = nameStyle.Foreground(lipgloss.Color(rarityColor))
+			}
+
+			countStyle := lipgloss.NewStyle()
+			if m.inventorySort == "quantity" {
+				countStyle = countStyle.Foreground(lipgloss.Color("#FFFF00"))
+			}
+
+			weightStyle := lipgloss.NewStyle()
+			if m.inventorySort == "weight" {
+				weightStyle = weightStyle.Foreground(lipgloss.Color("#FFFF00"))
+			}
+
+			valueStyle := lipgloss.NewStyle()
+			if m.inventorySort == "value" {
+				valueStyle = valueStyle.Foreground(lipgloss.Color("#FFFF00"))
+			}
+
+			content.WriteString(fmt.Sprintf("%s %s %s %s\n",
+				nameStyle.Render(displayNameFormatted),
+				countStyle.Render(fmt.Sprintf("%-3d", fish.Count)),
+				weightStyle.Render(fmt.Sprintf("%-5d", fish.Weight)),
+				valueStyle.Render(fmt.Sprintf("$%-4d", fish.Value))))
+		} else {
+			// For tiny screens, very compact display
+			displayName := fish.Name
+			if len(displayName) > 4 { // Even shorter for tiny screens
+				displayName = displayName[:2] + ".."
+			}
+
+			// For tiny screens, use shorter indicators
+			tinyIndicator := ""
+			if fishDetails.IsLegendary {
+				tinyIndicator = "★"
+			} else if fishDetails.IsTrash {
+				tinyIndicator = "□"
+			}
+
+			displayName = tinyIndicator + displayName
+
+			// Fixed-width formatted for tiny displays
+			displayNameFormatted := fmt.Sprintf("%-5.5s", displayName)
+
+			// No highlighting for very small screens - too cluttered
+			content.WriteString(fmt.Sprintf("%s %-2d %-3d $%-3d\n",
+				displayNameFormatted, fish.Count, fish.Weight, fish.Value))
+		}
+	}
+
+	// Add pagination info
+	if totalPages > 1 {
+		content.WriteString("\n")
+		pageInfo := fmt.Sprintf("Page %d/%d", m.inventoryPage+1, totalPages)
+		if m.width >= 60 {
+			content.WriteString(infoStyle.Render(pageInfo + " (↑/↓ to navigate)"))
+		} else {
+			content.WriteString(infoStyle.Render(pageInfo))
+		}
+	}
+
+	// Add summary section with total fish caught and value
+	content.WriteString("\n")
+
+	// Calculate total weight and value for this date
+	totalFish := len(fishCaught)
+	var totalWeight, totalValue int
+	for _, fish := range fishCaught {
+		totalWeight += fish.Weight
+		totalValue += fish.Value
+	}
+
+	if m.width >= 70 {
+		content.WriteString(strings.Repeat("─", 46) + "\n")
+		content.WriteString(successStyle.Render(fmt.Sprintf("%s TOTAL: %d fish | Weight: %dlbs | Value: $%d",
+			dateObj.Format("Jan 2"), totalFish, totalWeight, totalValue)))
+	} else if m.width >= 40 {
+		content.WriteString(strings.Repeat("─", 32) + "\n")
+		content.WriteString(successStyle.Render(fmt.Sprintf("%s: %d fish | $%d",
+			dateObj.Format("Jan 2"), totalFish, totalValue)))
+	} else {
+		content.WriteString(strings.Repeat("─", 18) + "\n")
+		content.WriteString(successStyle.Render(fmt.Sprintf("%s: %d | $%d",
+			dateObj.Format("01/02"), totalFish, totalValue)))
+	}
+
+	// Add sorting help
+	content.WriteString("\n\n")
+	if m.width >= 60 {
+		content.WriteString(infoStyle.Render("Sort: [1]Rarity [2]Weight [3]Value [4]Qty | Navigate: [↑]Up [↓]Down"))
+	} else if m.width >= 30 {
+		content.WriteString(infoStyle.Render("[1]Rarity [2]Wt [3]Val [4]Qty | [↑/↓]Nav"))
+	} else {
+		content.WriteString(infoStyle.Render("1:R 2:W 3:V 4:Q | ↑/↓"))
+	}
+
+	return boxStyle.Render(content.String())
 }

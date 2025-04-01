@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand"
+	"sort"
 	"time" // Add time package for auto-continue
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,25 +12,28 @@ import (
 
 // Model for bubbletea
 type model struct {
-	state           string
-	menuItems       []string
-	selectedItem    int
-	fishingState    int
-	message         string
-	catchSuccess    bool
-	caughtFish      game.Fish
-	fishShape       string
-	width           int
-	height          int
-	autoFishMsg     string
-	autoFishTick    int
-	resultTimer     int     // Track time in fish result screen
-	fishingDuration int64   // Total duration for the fishing attempt in milliseconds
-	fishingStarted  int64   // When fishing started (unix timestamp in milliseconds)
-	fishingProgress float64 // Progress from 0.0 to 1.0
-	inventorySort   string  // Tracks inventory sort mode: "name", "weight", "value"
-	inventoryPage   int     // Current page of inventory when viewing
-	itemsPerPage    int     // Number of items to show per page
+	state              string
+	menuItems          []string
+	selectedItem       int
+	fishingState       int
+	message            string
+	catchSuccess       bool
+	caughtFish         game.Fish
+	fishShape          string
+	width              int
+	height             int
+	autoFishMsg        string
+	autoFishTick       int
+	resultTimer        int      // Track time in fish result screen
+	fishingDuration    int64    // Total duration for the fishing attempt in milliseconds
+	fishingStarted     int64    // When fishing started (unix timestamp in milliseconds)
+	fishingProgress    float64  // Progress from 0.0 to 1.0
+	inventorySort      string   // Tracks inventory sort mode: "name", "weight", "value"
+	inventoryPage      int      // Current page of inventory when viewing
+	itemsPerPage       int      // Number of items to show per page
+	historyDates       []string // Available dates for history
+	historyDateIndex   int      // Selected date index
+	historyViewingDate string   // Date currently being viewed
 }
 
 // Custom message type for auto-continuing
@@ -46,20 +50,23 @@ func initialModel() model {
 	updateCurrentUIState("menu")
 
 	return model{
-		state:           "menu",
-		menuItems:       []string{"Go Fishing", "View Inventory", "Quit Game"},
-		selectedItem:    0,
-		fishingState:    0,
-		width:           80,
-		height:          24,
-		autoFishTick:    0,
-		resultTimer:     0,
-		fishingDuration: 0,
-		fishingStarted:  0,
-		fishingProgress: 0.0,
-		inventorySort:   "name", // Default sorting by name
-		inventoryPage:   0,      // Start at first page
-		itemsPerPage:    8,      // Show 8 items per page
+		state:              "menu",
+		menuItems:          []string{"Go Fishing", "View Inventory", "View History", "Quit Game"},
+		selectedItem:       0,
+		fishingState:       0,
+		width:              80,
+		height:             24,
+		autoFishTick:       0,
+		resultTimer:        0,
+		fishingDuration:    0,
+		fishingStarted:     0,
+		fishingProgress:    0.0,
+		inventorySort:      "name", // Default sorting by name
+		inventoryPage:      0,      // Start at first page
+		itemsPerPage:       8,      // Show 8 items per page
+		historyDates:       []string{},
+		historyDateIndex:   0,
+		historyViewingDate: "",
 	}
 }
 
@@ -91,7 +98,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			} else if msg.String() == "s" { // Save progress
 				saveGameProgress()
-				m.message = "Game progress saved to /tmp."
+				m.message = "Game progress saved."
 			}
 			return m, nil
 		case "autoFishing":
@@ -104,7 +111,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			} else if msg.String() == "s" { // Save progress
 				saveGameProgress()
-				m.message = "Game progress saved to /tmp."
+				m.message = "Game progress saved."
 			}
 			// Auto-fishing continues even when user presses other keys
 			return m, nil
@@ -137,7 +144,91 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			} else if msg.String() == "s" { // Save progress
 				saveGameProgress()
-				m.message = "Game progress saved to /tmp."
+				m.message = "Game progress saved."
+			} else if msg.String() == "down" || msg.String() == "j" || msg.String() == "n" {
+				// Next page
+				m.inventoryPage++
+				return m, nil
+			} else if msg.String() == "up" || msg.String() == "k" || msg.String() == "p" {
+				// Previous page
+				if m.inventoryPage > 0 {
+					m.inventoryPage--
+				}
+				return m, nil
+			} else if msg.String() == "h" { // Switch to history view
+				m.state = "history"
+				m.historyDates = getAvailableDates()
+				// Sort dates in reverse chronological order
+				sort.Slice(m.historyDates, func(i, j int) bool {
+					return m.historyDates[i] > m.historyDates[j]
+				})
+				m.historyDateIndex = 0
+				if len(m.historyDates) > 0 {
+					m.historyViewingDate = m.historyDates[0]
+				} else {
+					m.historyViewingDate = ""
+				}
+				updateCurrentUIState("history")
+				return m, nil
+			}
+		case "history":
+			// Track UI state for background processes
+			updateCurrentUIState("history")
+			if msg.String() == "q" || msg.String() == "esc" {
+				m.state = "menu"
+				updateCurrentUIState("menu")
+				return m, nil
+			} else if msg.String() == "down" || msg.String() == "j" {
+				// Next date
+				if m.historyDateIndex < len(m.historyDates)-1 {
+					m.historyDateIndex++
+					m.historyViewingDate = m.historyDates[m.historyDateIndex]
+				}
+				return m, nil
+			} else if msg.String() == "up" || msg.String() == "k" {
+				// Previous date
+				if m.historyDateIndex > 0 {
+					m.historyDateIndex--
+					m.historyViewingDate = m.historyDates[m.historyDateIndex]
+				}
+				return m, nil
+			} else if msg.String() == "enter" {
+				// View catches for this date
+				if m.historyViewingDate != "" {
+					setViewingDate(m.historyViewingDate)
+					m.state = "viewHistoryCatches"
+					m.inventoryPage = 0 // Reset to first page
+					updateCurrentUIState("viewHistoryCatches")
+				}
+				return m, nil
+			}
+		case "viewHistoryCatches":
+			// Track UI state for background processes
+			updateCurrentUIState("viewHistoryCatches")
+			if msg.String() == "q" || msg.String() == "esc" {
+				m.state = "history"
+				updateCurrentUIState("history")
+				return m, nil
+			} else if msg.String() == "w" || msg.String() == "2" {
+				// Toggle to sort by weight
+				m.inventorySort = "weight"
+				m.inventoryPage = 0 // Reset to first page when changing sort
+				return m, nil
+			} else if msg.String() == "v" || msg.String() == "3" {
+				// Toggle to sort by value
+				m.inventorySort = "value"
+				m.inventoryPage = 0 // Reset to first page when changing sort
+				return m, nil
+			} else if msg.String() == "r" || msg.String() == "1" {
+				// Toggle to sort by rarity
+				m.inventorySort = "name"
+				m.inventoryPage = 0 // Reset to first page when changing sort
+				return m, nil
+			} else if msg.String() == "q" || msg.String() == "4" {
+				// Toggle to sort by quantity
+				m.inventorySort = "quantity"
+				m.inventoryPage = 0 // Reset to first page when changing sort
+				return m, nil
 			} else if msg.String() == "down" || msg.String() == "j" || msg.String() == "n" {
 				// Next page
 				m.inventoryPage++
@@ -302,7 +393,20 @@ func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 1: // View Inventory
 			m.state = "inventory"
 			m.message = ""
-		case 2: // Quit
+		case 2: // View History
+			m.state = "history"
+			m.historyDates = getAvailableDates()
+			// Sort dates in reverse chronological order
+			sort.Slice(m.historyDates, func(i, j int) bool {
+				return m.historyDates[i] > m.historyDates[j]
+			})
+			m.historyDateIndex = 0
+			if len(m.historyDates) > 0 {
+				m.historyViewingDate = m.historyDates[0]
+			} else {
+				m.historyViewingDate = ""
+			}
+		case 3: // Quit
 			close(stopIdle) // Safely close channel
 			return m, tea.Quit
 		}
@@ -356,4 +460,19 @@ var (
 	fishStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#56B6C2")).
 			Bold(true)
+
+	dateStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFCC00")).
+			Bold(true)
+
+	highlightedDateStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#000000")).
+				Background(lipgloss.Color("#FFCC00")).
+				Bold(true)
+
+	historyHeaderStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#FFFFFF")).
+				Background(lipgloss.Color("#555555")).
+				Padding(0, 1).
+				Bold(true)
 )
