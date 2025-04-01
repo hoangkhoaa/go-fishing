@@ -209,7 +209,7 @@ func (m model) renderAutoFishing() string {
 		if testMode {
 			content.WriteString(fmt.Sprintf("\n\nTotal fish: %d | Time per catch: 5-10 seconds (test mode)", fishCaughtSoFar))
 		} else {
-			content.WriteString(fmt.Sprintf("\n\nTotal fish: %d | Time per catch: 5 sec - 5 min", fishCaughtSoFar))
+			content.WriteString(fmt.Sprintf("\n\nTotal fish: %d | Time per catch: 10-120 seconds", fishCaughtSoFar))
 		}
 	}
 
@@ -516,11 +516,11 @@ func (m model) renderInventory() string {
 
 		// Add indicators for special fish types
 		if fishDetails.IsLegendary {
-			fishIndicator = "🏆 "
+			fishIndicator = "[L] "
 		} else if fishDetails.IsTrash {
-			fishIndicator = "📦 "
+			fishIndicator = "[T] "
 		} else {
-			fishIndicator = ""
+			fishIndicator = "    "
 		}
 
 		if m.width >= 70 {
@@ -652,9 +652,11 @@ func (m model) renderInventory() string {
 			// For tiny screens, use shorter indicators
 			tinyIndicator := ""
 			if fishDetails.IsLegendary {
-				tinyIndicator = "★"
+				tinyIndicator = "L" // Single-character indicator for legendary
 			} else if fishDetails.IsTrash {
-				tinyIndicator = "□"
+				tinyIndicator = "T" // Single-character indicator for trash
+			} else {
+				tinyIndicator = " " // Space for consistent width
 			}
 
 			displayName = tinyIndicator + displayName
@@ -986,11 +988,11 @@ func (m model) renderHistoryCatches() string {
 
 		// Add indicators for special fish types
 		if fishDetails.IsLegendary {
-			fishIndicator = "🏆 "
+			fishIndicator = "[L] "
 		} else if fishDetails.IsTrash {
-			fishIndicator = "📦 "
+			fishIndicator = "[T] "
 		} else {
-			fishIndicator = ""
+			fishIndicator = "    " // Same width spacing for alignment
 		}
 
 		if m.width >= 70 {
@@ -1122,9 +1124,11 @@ func (m model) renderHistoryCatches() string {
 			// For tiny screens, use shorter indicators
 			tinyIndicator := ""
 			if fishDetails.IsLegendary {
-				tinyIndicator = "★"
+				tinyIndicator = "L" // Single-character indicator for legendary
 			} else if fishDetails.IsTrash {
-				tinyIndicator = "□"
+				tinyIndicator = "T" // Single-character indicator for trash
+			} else {
+				tinyIndicator = " " // Space for consistent width
 			}
 
 			displayName = tinyIndicator + displayName

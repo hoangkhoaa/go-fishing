@@ -474,8 +474,8 @@ func getRandomFishingDuration() time.Duration {
 		seconds := rand.Intn(6) + 5 // 5-10 range
 		return time.Second * time.Duration(seconds)
 	} else {
-		// 5 seconds to 5 minutes in normal mode
-		seconds := rand.Intn(295) + 5 // 5-300 seconds (5 min max)
+		// 10 seconds to 2 minutes in normal mode
+		seconds := rand.Intn(111) + 10 // 10-120 seconds (2 min max)
 		return time.Second * time.Duration(seconds)
 	}
 }
