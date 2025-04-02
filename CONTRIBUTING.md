@@ -19,7 +19,7 @@ Don't worry about making things perfect - I'm happy to work with you to polish t
 
 It's super simple to get started:
 
-1. Make sure you have Go installed (version 1.18 or newer)
+1. Make sure you have Go installed (version 1.23 or newer)
 2. Clone the repository
 3. Get dependencies with `make install-deps`
 4. Jump right in with `make run`

@@ -8,7 +8,7 @@ echo "Setting up the fishing game..."
 # Check if Go is installed
 if ! command -v go &> /dev/null; then
     echo "Error: Go is not installed!"
-    echo "Please install Go 1.18 or higher from https://golang.org/dl/"
+    echo "Please install Go 1.23 or higher from https://golang.org/dl/"
     exit 1
 fi
 
@@ -18,7 +18,7 @@ GO_VERSION_MAJOR=$(echo $GO_VERSION | cut -d. -f1)
 GO_VERSION_MINOR=$(echo $GO_VERSION | cut -d. -f2)
 
 if [ "$GO_VERSION_MAJOR" -lt 1 ] || ([ "$GO_VERSION_MAJOR" -eq 1 ] && [ "$GO_VERSION_MINOR" -lt 18 ]); then
-    echo "Error: Go version 1.18 or higher is required!"
+    echo "Error: Go version 1.23 or higher is required!"
     echo "Current version: $GO_VERSION"
     echo "Please upgrade your Go installation."
     exit 1

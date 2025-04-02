@@ -15,7 +15,7 @@ Hey there! Welcome to my little passion project - a cozy terminal-based fishing 
 
 ### What You'll Need
 
-- Go 1.18 or newer
+- Go 1.23 or newer
 
 ### Quick Setup
 
