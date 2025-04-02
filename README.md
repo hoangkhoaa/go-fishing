@@ -1,187 +1,125 @@
-# Terminal Fishing Game
+# 🎣 Terminal Fishing Game
 
-A relaxing terminal-based fishing game written in Go using the Bubble Tea TUI framework.
+Hey there! Welcome to my little passion project - a cozy terminal-based fishing game that lets you relax and catch some digital fish while multitasking with your other work. I built this as a solo developer using Go and the Bubble Tea framework, hoping to create something that brings a bit of joy to your terminal.
 
-## Features
+## ✨ What Makes This Special
 
-- Catch 50 different fish species with unique characteristics
-- Fish have varying rarity, weight, color, and pattern
-- Weather conditions affect fishing success
-- Time of day affects fishing success and fish availability
-- Auto-fishing feature that works in the background (every 10 seconds)
-- Attractive ASCII art and animations
-- Simple keyboard-driven interface
+- 🐟 Catch 50 different fish species, each with their own personality (rarity, weight, colors)
+- 🌦️ Real-time weather affects your fishing luck
+- 🕒 Time of day changes which fish are active (morning, afternoon, evening, night)
+- 🤖 Auto-fishing lets you catch fish in the background while you do other things
+- 🎨 Charming ASCII art and animations to brighten your terminal
+- 🎮 Super simple keyboard controls - nothing complicated here!
 
-## Installation
+## 🚀 Getting Started
 
-### Prerequisites
+### What You'll Need
 
-- Go 1.18 or higher
+- Go 1.18 or newer
 
-### Building from source
+### Quick Setup
 
 ```bash
-# Clone the repository
+# Grab a copy of the code
 git clone https://github.com/hoangkhoaa/go-fishing.git
 cd go-fishing
 
-# Build the game
+# Build it
 make build
 
-# Run the game
+# Let's go fishing!
 make run
 ```
 
-## How to Play
+## 🎮 How to Play
 
-- Use arrow keys or j/k to navigate menus
-- Press Enter or Space to select menu options
-- Press 'a' to toggle auto-fishing from anywhere
-- Press q or Esc to go back or exit
+Nothing complicated here - just a few simple controls:
+
+- Move around with arrow keys (or j/k if you're a keyboard wizard)
+- Select stuff with Enter or Space
+- Press 'a' anytime to toggle auto-fishing (this is the best part!)
+- Need to escape? Press q or Esc
 
 ### Game Options
 
-- **Go Fishing**: Cast your line and try to catch fish
-- **View Inventory**: See what fish you've caught so far
-- **View History**: Browse your fishing records by date
-- **Quit Game**: Exit the game
+- **Go Fishing**: Throw in your line and see what bites
+- **View Inventory**: Check out your fishy collection
+- **View History**: See how your fishing has gone over time
+- **Quit Game**: Take a break (but come back soon!)
 
 ### Command-Line Options
 
-- **Normal Mode**: `./fishing-game` - Standard gameplay with fishing times between 5 seconds and 5 minutes
-- **Test Mode**: `./fishing-game -test` - Shortened fishing durations (5-10 seconds) for easier testing
+- **Chill Mode**: `./fishing-game` - Normal fishing times (10-120 seconds)
+- **Impatient Mode**: `./fishing-game -test` - Quick fishing (5-10 seconds) for when you just want to catch 'em all
 
-### Auto-Fishing
+### 🤖 Auto-Fishing - Fish While You Work!
 
-You can toggle auto-fishing by pressing 'a' at any time. When enabled:
-- The game will automatically attempt to catch fish every 10 seconds
-- Each fish has different catch probabilities based on rarity
-- Auto-fishing works even when you're in other menus
-- You can see your auto-fishing status in the stats bar
+This is my favorite feature! Press 'a' anytime to let the game fish for you:
+- It'll automatically try for a catch every 10 seconds
+- Works while you're doing other things in the game
+- Even works when you're in another tab doing actual work!
+- The status bar shows if it's active
 
-### Fish Collection
+### 🐟 Fish Collection
 
-The game features 60 different catchable items with varying:
-- Rarity (common to extremely rare)
-- Weight (small to massive)
-- Colors and patterns
-- Habitats
-- Time preferences (each fish is more active at certain times of day)
+I've added 60 different catchable items to discover:
+- From common minnows to ultra-rare legendary creatures
+- Weights ranging from tiny to massive
+- Various colors and patterns to collect
+- Different habitats and time preferences
 
-#### Legendary and Mythical Creatures
+#### 🌟 Legendary and Mythical Creatures
 
-Beyond regular fish, you may occasionally encounter legendary and mythical creatures:
-- **Extremely Rare**: Only a 0.5-2% chance depending on conditions
-- **Highly Valuable**: Worth much more than regular fish
-- **Time-Specific**: Some legendary creatures appear only at certain times
-- Special creatures include:
-  - The Kraken (night)
-  - Loch Ness Monster (night)
-  - Megalodon (night)
-  - Golden Carp (morning)
-  - Phoenix Fish (afternoon)
-  - And more!
+If you're lucky, you might encounter something extraordinary:
+- Super rare (0.5-2% chance)
+- Worth a small fortune
+- Some only appear at specific times of day
+- Keep an eye out for The Kraken, Loch Ness Monster, Golden Carp, and more!
 
-#### Trash Items
+#### 🗑️ Not-So-Treasures
 
-Not every catch will be a fish! Sometimes you'll pull up various trash items:
-- About 12% chance to catch trash instead of a fish
-- Most trash items have no value, but some may be worth a small amount
-- Examples include old boots, plastic bottles, shopping bags, and more
-- The rare Treasure Chest is technically trash but quite valuable!
+Sometimes you'll catch... well, junk:
+- About a 12% chance to reel in something that's not a fish
+- Old boots, plastic bottles, the usual suspects
+- But don't ignore them - there's a rare Treasure Chest hiding among the trash!
 
-### Time of Day System
+### ⏰ Time of Day Affects Your Fishing
 
-The game uses real-time to simulate different fishing periods throughout the day:
-- **Morning (5am-11am)** - Perfect for surface feeders, 20% boost to catch rates
-- **Afternoon (11am-5pm)** - Deep water fish are more active, but overall slower fishing
-- **Evening (5pm-9pm)** - Prime fishing time with largest catch rate boost (30%)
-- **Night (9pm-5am)** - Good for nocturnal species, especially dark-colored fish
+I added a time system that uses your computer's real time:
+- **Morning (5am-11am)** - Early birds get 20% better catch rates
+- **Afternoon (11am-5pm)** - Things slow down in the midday heat
+- **Evening (5pm-9pm)** - Prime fishing time! 30% boost to catch rates
+- **Night (9pm-5am)** - Perfect for night owls hunting nocturnal species
 
-Each time period has different effects:
-- Changes which fish are more likely to appear
-- Adjusts overall catch success rates
-- Provides visual indicators in the game interface
-- Shows current time period and its effect on fishing
+The game shows you which time period you're in and how it affects fishing.
 
-### Inventory Management
+### 🧾 Inventory and History Features
 
-The inventory screen provides a complete overview of your catches:
-- See all fish types you've caught with quantities, weights, and values
-- Total catch count, total weight, and total value are displayed
-- Sort your inventory in different ways:
-  - Press `1` to sort by rarity (rarest fish first)
-  - Press `2` to sort by weight (heaviest fish first)
-  - Press `3` to sort by value (most valuable fish first)
-  - Press `4` to sort by quantity (most caught first)
-- Press `h` to view your fishing history by date
-- The currently sorted column is highlighted for easy reference
+Keep track of everything you've caught:
+- Sort your catches by rarity (1), weight (2), value (3), or quantity (4)
+- Press 'h' to see your fishing history organized by date
+- The game automatically saves your progress - no "save game" needed!
 
-### Fishing History
+## 💾 Save System
 
-The game keeps track of your catches by day, allowing you to review your fishing history:
-- **Daily Records**: Fish catches are saved by date in the `saves` directory
-- **History Browser**: Navigate through dates with fishing activity
-- **Catch Statistics**: View fish count, total weight, and value for each day
-- **Detailed View**: For each date, see exactly what you caught with the same sorting options as the inventory
-- **Today vs. Past**: Special views distinguish between today's catches and historical records
-- **Auto-saving**: Game progress is saved automatically when fish are caught or every 5 minutes
+- Your catches are saved by date in the `saves` directory
+- Game automatically saves when you catch something or every 5 minutes
+- No need to worry about losing your progress!
 
-Each day's catches are stored in a separate save file, making it easy to track your fishing progress over time. All save files are located in the local `saves` directory within the game folder.
+## 🔮 What's Coming Next: News Integration
 
-## Development
+I'm working on something cool - integrating real-world news into the game to create dynamic events:
 
-The code is organized in a modular structure:
-- `main.go` - Program entry point and initialization
-- `model.go` - Core data structures and UI styling
-- `fishing.go` - Fishing mechanics and logic
-- `graphics.go` - Visual elements and fish patterns
-- `views.go` - UI rendering for different game states
-- `background.go` - Background processes for idle fishing
+- Oil spills, gold rushes, and crypto booms affecting fishing
+- Real weather patterns influencing what you can catch
+- Global events creating special limited-time opportunities
 
-## License
+This is still in development, but I'm excited to bring the real world into our little fishing game!
 
-MIT License 
+## 🤝 Want to Help?
 
-## Future Roadmap: Real-World News Integration
+This is an open source passion project. If you'd like to contribute or just say hi, check out the CONTRIBUTING.md file or open an issue. I'd love to hear from you!
 
-In the future, we plan to integrate real-world news into the game as "Random Encounters" that will dynamically affect gameplay. This system will connect fishing mechanics to external events for a more engaging and varied experience.
+## 📄 License
 
-### News-Based Random Encounters
-
-The fishing game will fetch real-world data from various sources to create in-game events:
-
-#### Resource Markets
-- **Oil Price Fluctuations**: Oil spills during price crashes could reduce fishing success rates in certain areas
-- **Gold Market**: Gold rushes during price spikes might introduce gold nugget fishing opportunities
-- **Crypto Markets**: Crypto booms might allow discovery of waterproof hard drives containing digital currency
-
-#### Weather Systems
-- **Real Weather Data**: Local or global weather patterns will affect fishing conditions
-- **Storm Warnings**: Major storms could create opportunities to catch rare storm-driven species
-- **Temperature Changes**: Seasonal fish migrations based on real climate data
-
-#### Global Events
-- **Conflict Zones**: War news might temporarily block certain fishing areas or introduce military debris
-- **Trade Agreements**: New fishing territories could open based on international relations
-- **Conservation News**: Endangered species events based on environmental news
-
-### Technical Implementation Plan
-
-1. **Phase 1: News API Integration**
-   - Connect to financial, weather, and news APIs
-   - Develop a news processing system that extracts relevant game-affecting data
-
-2. **Phase 2: Event System Development**
-   - Create an event generation engine that converts news into gameplay effects
-   - Implement a quest/encounter system for special time-limited events
-
-3. **Phase 3: Dynamic World Adaptation**
-   - Develop changing fish populations based on real-world conditions
-   - Implement seasonal and news-reactive fishing locations
-
-4. **Phase 4: Player Economy**
-   - Add trading system affected by resource market news
-   - Implement fish market price fluctuations based on real economic data
-
-This roadmap represents our vision for evolving the game into a dynamically changing world that reflects real-world events while maintaining the relaxing core fishing experience. 
+MIT License - Feel free to play with the code! 
