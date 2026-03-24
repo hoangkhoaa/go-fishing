@@ -22,6 +22,17 @@ var fishShapes = []string{
 	"·.¸¸><(((º>",
 	"c=Ø>",
 	"[]==O>",
+	// Additional shapes for more variety
+	"><(((*>",
+	"~><(((°>",
+	"><°°°>",
+	"o==(  )><",
+	"*><((>",
+	"<=={{{°>",
+	"><|||°>",
+	"°><)))",
+	"><###°>",
+	"·:·><(>",
 }
 
 // Curved rod frames pointing to the right - more compact version

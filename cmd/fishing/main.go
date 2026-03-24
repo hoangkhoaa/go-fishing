@@ -38,6 +38,9 @@ var (
 	// Time of day variables
 	timeOfDay  string        // Current time period (morning, afternoon, evening, night)
 	timeFactor float64 = 1.0 // How time of day affects fishing success
+
+	// Personal best tracking: fish name -> heaviest weight caught
+	personalBests map[string]int
 )
 
 // TimeOfDay represents different fishing periods with unique characteristics
@@ -100,6 +103,7 @@ type GameSave struct {
 	LastActiveTime time.Time
 	AutoFishing    bool
 	SaveTime       time.Time // When the game was saved
+	PersonalBests  map[string]int // heaviest weight ever caught per species
 }
 
 func main() {
@@ -160,6 +164,7 @@ func initializeGame() {
 	dailyCatches = make(map[string][]game.Fish)
 	dateList = []string{}
 	isViewingHistory = false
+	personalBests = make(map[string]int)
 
 	// Try to load saved game and history
 	if !loadGameProgress() {
@@ -225,6 +230,7 @@ func saveGameProgress() {
 		LastActiveTime: lastActiveTime,
 		AutoFishing:    autoFishing,
 		SaveTime:       time.Now(),
+		PersonalBests:  personalBests,
 	}
 
 	// Backup player's full fish list
@@ -308,6 +314,11 @@ func loadGameProgress() bool {
 	weatherFactor = gameSave.WeatherFactor
 	lastActiveTime = gameSave.LastActiveTime
 	autoFishing = gameSave.AutoFishing
+	if gameSave.PersonalBests != nil {
+		personalBests = gameSave.PersonalBests
+	} else {
+		personalBests = make(map[string]int)
+	}
 
 	// Print load message with timestamp
 	saveTimeStr := gameSave.SaveTime.Format("Jan 2 15:04:05")
@@ -478,6 +489,22 @@ func getRandomFishingDuration() time.Duration {
 		seconds := rand.Intn(111) + 10 // 10-120 seconds (2 min max)
 		return time.Second * time.Duration(seconds)
 	}
+}
+
+// checkAndUpdatePersonalBest returns true if weight is a new personal best for fishName.
+// It updates personalBests under the global mutex.
+func checkAndUpdatePersonalBest(fishName string, weight int) bool {
+	mu.Lock()
+	defer mu.Unlock()
+	if personalBests == nil {
+		personalBests = make(map[string]int)
+	}
+	best, exists := personalBests[fishName]
+	if !exists || weight > best {
+		personalBests[fishName] = weight
+		return true
+	}
+	return false
 }
 
 // Start all background routines with panic recovery

@@ -143,14 +143,27 @@ func (m model) renderFishing() string {
 				barWidth = 10
 			}
 
-			blocks := int((float64(barWidth) * m.fishingProgress) + 0.5)
-			progressBar = "["
-			progressBar += strings.Repeat("█", blocks)
-			progressBar += strings.Repeat("░", barWidth-blocks)
-			progressBar += "]"
+			filled := int((float64(barWidth) * m.fishingProgress) + 0.5)
+			if filled > barWidth {
+				filled = barWidth
+			}
 
-			// Add percentage next to the bar
-			progressBar = fmt.Sprintf("%s %d%%", progressBar, progress)
+			// fishMarker is the ASCII fish drawn at the frontier of the progress bar.
+			const fishMarker = "><>"
+			const fishMarkerLen = len(fishMarker)
+
+			// Build bar with the fish marker advancing as progress increases
+			bar := strings.Repeat("█", filled)
+			if filled < barWidth && progress > 0 {
+				bar += fishMarker
+				remaining := barWidth - filled - fishMarkerLen
+				if remaining > 0 {
+					bar += strings.Repeat("░", remaining)
+				}
+			} else {
+				bar += strings.Repeat("░", barWidth-filled)
+			}
+			progressBar = fmt.Sprintf("[%s] %d%%", bar, progress)
 		}
 
 		if m.width >= 40 {
@@ -257,6 +270,11 @@ func (m model) renderFishResult() string {
 			catchHeader = "🎣 CATCH! 🎣"
 		}
 
+		// Personal best badge
+		if m.isNewRecord && !fishDetails.IsTrash {
+			catchHeader += " 🏅 NEW RECORD!"
+		}
+
 		// Create a more prominent and colorful catch header - responsive width
 		formattedHeader := lipgloss.NewStyle().
 			Bold(true).
@@ -293,30 +311,55 @@ func (m model) renderFishResult() string {
 				content.WriteString(infoStyle.Render(timeInfo) + "\n")
 			}
 
-			// Add special description for legendary or trash items
-			if fishDetails.IsLegendary {
+			// Catch message: prefer AI-generated, then species default
+			catchMsg := m.caughtFish.CatchMsg
+			if m.aiGeneratedMsg != "" {
+				catchMsg = m.aiGeneratedMsg
+			}
+			if catchMsg != "" && !fishDetails.IsTrash {
 				content.WriteString(lipgloss.NewStyle().
-					Foreground(lipgloss.Color("#FF00FF")).
-					Render("A legendary creature of myth and wonder!") + "\n")
+					Foreground(lipgloss.Color("#DDDDDD")).
+					Italic(true).
+					Render(catchMsg) + "\n")
 			} else if fishDetails.IsTrash {
+				trashMsg := "Just some trash from the water..."
+				if m.aiGeneratedMsg != "" {
+					trashMsg = m.aiGeneratedMsg
+				}
 				content.WriteString(lipgloss.NewStyle().
 					Foreground(lipgloss.Color("#777777")).
-					Render("Just some trash from the water...") + "\n")
+					Render(trashMsg) + "\n")
 			}
 		}
 
-		// Generate pattern based on fish properties
-		fishPattern := generateFishPattern(m.caughtFish)
-		fishingLine := fishPattern
-
 		// Show fish graphic only if there's enough space
 		if m.width >= 30 {
-			// Add spacer for better positioning
 			content.WriteString("\n")
-
-			// Show simplified fisherman with fish
-			fishermanWithCatch := fmt.Sprintf(fishermanWithFish, fishingLine)
-			content.WriteString(fishermanWithCatch + "\n")
+			if m.aiGeneratedArt != "" {
+				// Display the Gemini-generated ASCII art with a subtle badge
+				aiBadge := lipgloss.NewStyle().
+					Foreground(lipgloss.Color("#AA88FF")).
+					Render("✨ AI")
+				content.WriteString(aiBadge + "\n")
+				content.WriteString(lipgloss.NewStyle().
+					Foreground(lipgloss.Color("#CCBBFF")).
+					Render(m.aiGeneratedArt) + "\n")
+			} else if m.aiLoading {
+				// Show a loading placeholder while Gemini is generating
+				content.WriteString(lipgloss.NewStyle().
+					Foreground(lipgloss.Color("#888888")).
+					Italic(true).
+					Render("✨ Generating unique art...") + "\n")
+				// Fallback to default pattern underneath
+				fishPattern := generateFishPattern(m.caughtFish)
+				fishermanWithCatch := fmt.Sprintf(fishermanWithFish, fishPattern)
+				content.WriteString(fishermanWithCatch + "\n")
+			} else {
+				// Default fish pattern
+				fishPattern := generateFishPattern(m.caughtFish)
+				fishermanWithCatch := fmt.Sprintf(fishermanWithFish, fishPattern)
+				content.WriteString(fishermanWithCatch + "\n")
+			}
 		}
 	} else {
 		// Improved "no catch" message - responsive width
@@ -733,31 +776,44 @@ func renderStats(width int) string {
 		}
 	}
 
+	// Weather emoji
+	weatherEmoji := "🌤️"
+	switch {
+	case weatherFactor >= 1.2:
+		weatherEmoji = "☀️"
+	case weatherFactor >= 0.9:
+		weatherEmoji = "🌤️"
+	default:
+		weatherEmoji = "🌧️"
+	}
+
 	// Ultra-compact stats
 	statsBuilder := strings.Builder{}
 
 	// Show fish count and auto status
 	if width < 40 {
 		// Super compact view - just the essentials
-		statsBuilder.WriteString(fmt.Sprintf("Fish: %d | %s",
-			len(player.FishCaught), currentPeriod.Icon))
+		statsBuilder.WriteString(fmt.Sprintf("Fish: %d | %s %s",
+			len(player.FishCaught), currentPeriod.Icon, weatherEmoji))
 	} else if width < 60 {
 		// Compact view
-		statsBuilder.WriteString(fmt.Sprintf("Fish: %d | Auto: %s | %s %s",
+		statsBuilder.WriteString(fmt.Sprintf("Fish: %d | Auto: %s | %s %s %s",
 			len(player.FishCaught),
 			autoStatusStyle.Render(autoStatus),
 			currentPeriod.Icon,
-			timeOfDay))
+			timeOfDay,
+			weatherEmoji))
 	} else {
 		// Full view with all details
 		timeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#88CCFF"))
 
 		// Show more details in widescreen
-		statsBuilder.WriteString(fmt.Sprintf("Fish: %d | Auto: %s | %s %s",
+		statsBuilder.WriteString(fmt.Sprintf("Fish: %d | Auto: %s | %s %s %s",
 			len(player.FishCaught),
 			autoStatusStyle.Render(autoStatus),
 			currentPeriod.Icon,
-			timeStyle.Render(timeOfDay+" - "+currentPeriod.Description)))
+			timeStyle.Render(timeOfDay+" - "+currentPeriod.Description),
+			weatherEmoji))
 
 		// Show test mode status on wider displays
 		if testMode {
@@ -767,6 +823,13 @@ func renderStats(width int) string {
 		// Show catch factor if there's space
 		catchInfo := fmt.Sprintf(" | Catch Rate: %.1fx", timeFactor)
 		statsBuilder.WriteString(infoStyle.Render(catchInfo))
+
+		// Show Gemini status if configured
+		if hasGeminiToken() {
+			statsBuilder.WriteString(" | " + lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#AA88FF")).
+				Render("✨ AI"))
+		}
 	}
 
 	return boxStyle.Render(statsBuilder.String())

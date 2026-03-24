@@ -32,8 +32,9 @@ func autoTick() tea.Cmd {
 
 // Custom message type for catch result
 type catchResultMsg struct {
-	success bool
-	fish    game.Fish
+	success     bool
+	fish        game.Fish
+	isNewRecord bool
 }
 
 // The main fishing animation function is now in model.go as part of the Update method
@@ -195,13 +196,27 @@ func chooseFish() game.Fish {
 
 	// Pick a fish based on the random number and adjusted fish rarity
 	currentSum := 0
+	selectedFish := timeFish[0]
 	for i, fish := range timeFish {
 		currentSum += adjustedRarities[i]
 		if randomNum < currentSum {
-			return fish
+			selectedFish = fish
+			break
 		}
 	}
 
-	// Default return (should never happen)
-	return timeFish[0]
+	// Apply a ±15% weight variance to make each catch feel unique.
+	// The variance factor ranges from minWeightVariance to minWeightVariance+weightVarianceRange.
+	const (
+		minWeightVariance  = 0.85
+		weightVarianceRange = 0.30
+	)
+	varianceFactor := minWeightVariance + rand.Float64()*weightVarianceRange
+	variedWeight := int(float64(selectedFish.Weight) * varianceFactor)
+	if variedWeight < 1 {
+		variedWeight = 1
+	}
+	selectedFish.Weight = variedWeight
+
+	return selectedFish
 }
