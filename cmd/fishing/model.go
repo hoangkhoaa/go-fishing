@@ -34,6 +34,14 @@ type model struct {
 	historyDates       []string // Available dates for history
 	historyDateIndex   int      // Selected date index
 	historyViewingDate string   // Date currently being viewed
+
+	// AI-generated content for the current catch
+	aiGeneratedArt string // ASCII art produced by Gemini
+	aiGeneratedMsg string // Catch message produced by Gemini
+	aiLoading      bool   // True while Gemini is generating content
+
+	// Whether the last catch was a new personal-best weight for that species
+	isNewRecord bool
 }
 
 // Custom message type for auto-continuing
@@ -43,6 +51,12 @@ func autoContinue() tea.Cmd {
 	return tea.Tick(time.Second*3, func(t time.Time) tea.Msg {
 		return autoContinueMsg(t)
 	})
+}
+
+// aiArtMsg carries the Gemini-generated art and catch message back to the model
+type aiArtMsg struct {
+	art      string
+	catchMsg string
 }
 
 func initialModel() model {
@@ -249,6 +263,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// to show the fishing animation for next catch
 				m.state = "fishing"
 				m.fishingState = 0
+				m.aiGeneratedArt = ""
+				m.aiGeneratedMsg = ""
+				m.aiLoading = false
 				// Set up a new random fishing duration
 				duration := getRandomFishingDuration()
 				m.fishingDuration = duration.Milliseconds()
@@ -257,6 +274,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				updateCurrentUIState("fishing")
 				return m, tick()
 			} else {
+				m.aiGeneratedArt = ""
+				m.aiGeneratedMsg = ""
+				m.aiLoading = false
 				m.state = "menu"
 				updateCurrentUIState("menu")
 				return m, nil
@@ -306,6 +326,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Show fishing animation after catch result
 			m.state = "fishing"
 			m.fishingState = 0
+			m.aiGeneratedArt = ""
+			m.aiGeneratedMsg = ""
+			m.aiLoading = false
 			// Set up a new random fishing duration
 			duration := getRandomFishingDuration()
 			m.fishingDuration = duration.Milliseconds()
@@ -320,8 +343,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.catchSuccess = true
 			m.caughtFish = msg.fish
 			m.fishShape = fishShapes[rand.Intn(len(fishShapes))]
+			m.isNewRecord = msg.isNewRecord
 		} else {
 			m.catchSuccess = false
+			m.isNewRecord = false
 		}
 		m.state = "fishResult"
 		updateCurrentUIState("fishResult")
@@ -332,6 +357,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, autoContinue()
 		}
 		return m, nil
+
+	case aiArtMsg:
+		// Update the model with AI-generated content regardless of state –
+		// renderFishResult will only display it when on the result screen.
+		m.aiGeneratedArt = msg.art
+		m.aiGeneratedMsg = msg.catchMsg
+		m.aiLoading = false
+		return m, nil
 	}
 
 	return m, nil
@@ -339,6 +372,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // Handle completion of fishing and determine catch
 func (m model) completeFishing() (tea.Model, tea.Cmd) {
+	// Clear any previous AI-generated content
+	m.aiGeneratedArt = ""
+	m.aiGeneratedMsg = ""
+	m.aiLoading = false
+
 	// Calculate catch chance with weather and time of day factors
 	catchChance := (rand.Float64() * 10) + float64(player.RodStrength) + float64(player.BaitStrength)
 	catchChance *= weatherFactor
@@ -347,22 +385,37 @@ func (m model) completeFishing() (tea.Model, tea.Cmd) {
 	success := catchChance >= 5
 
 	var fish game.Fish
+	newRecord := false
 	if success {
-		// Choose a fish based on rarity and time of day
+		// Choose a fish based on rarity and time of day (includes weight variance)
 		fish = chooseFish()
 		// Add to inventory
 		player.AddFish(fish)
 		// Auto-save when a fish is caught
 		saveGameProgress()
+		// Check if this is a personal best weight for this species
+		newRecord = checkAndUpdatePersonalBest(fish.Name, fish.Weight)
 	}
 
-	// Return catch result
-	return m, func() tea.Msg {
-		return catchResultMsg{
-			success: success,
-			fish:    fish,
-		}
+	catchCmd := func() tea.Msg {
+		return catchResultMsg{success: success, fish: fish, isNewRecord: newRecord}
 	}
+
+	// If Gemini is configured, fire an async command to generate unique art
+	if success && hasGeminiToken() {
+		m.aiLoading = true
+		fishName := fish.Name
+		fishColor := fish.Color
+		fishWeight := fish.Weight
+		fishLegendary := fish.IsLegendary
+		aiCmd := func() tea.Msg {
+			art, msg := generateFishContent(fishName, fishColor, fishWeight, fishLegendary)
+			return aiArtMsg{art: art, catchMsg: msg}
+		}
+		return m, tea.Batch(catchCmd, aiCmd)
+	}
+
+	return m, catchCmd
 }
 
 func (m model) updateMenu(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
